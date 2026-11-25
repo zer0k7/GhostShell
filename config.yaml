@@ -1,0 +1,15 @@
+# GhostShell config
+ssh_port: 2222
+dashboard_port: 5000
+host: "0.0.0.0"
+db_path: "data/ghostshell.db"
+host_key_path: "data/host_key"
+
+# What the attacker sees
+fake_hostname: "ubuntu-prod-01"
+fake_user: "admin"
+banner: "Ubuntu 22.04.4 LTS"
+# Ollama for the AI shell. If Ollama is not running, GhostShell
+# falls back to the rule-based fake shell — nothing breaks.
+ollama_url: "http://localhost:11434"
+ollama_model: "llama3.2:1b"

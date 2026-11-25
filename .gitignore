@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.pyc
+data/ghostshell.db
+data/host_key
+data/host_key.pub
