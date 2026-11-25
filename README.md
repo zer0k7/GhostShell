@@ -116,4 +116,4 @@ This is a defensive research tool for your own lab only. Run it on your own mach
 
 ---
 
-— Salik
+— zer0k7

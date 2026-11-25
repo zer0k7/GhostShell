@@ -1,60 +1,46 @@
 <div align="center">
 
-<h1><span style="color:#3b82f6">GhostShell - Architecture</span></h1>
-
-**How the trap works, end to end.**
+![GhostShell Architecture](headings/fake-company.svg)
 
 </div>
 
----
-
-## The fake company
-
-GhostShell is not one honeypot — it is a whole fake company that shares
-one fake world: same users, same files, same credentials, everywhere.
+GhostShell is not one honeypot. It is a whole fake company that shares one fake world: same users, same files, same credentials, everywhere.
 
 ![GhostShell Architecture](architecture.svg)
 
-
----
-
-## Components
+![Components](headings/components.svg)
 
 | File | Job |
 |---|---|
-| `ghostshell/honeypot.py` | Paramiko SSH server. Accepts **any** password or key — that is the trap. One thread per attacker. |
-| `ghostshell/shell.py` | Fake shell. `ls`, `cat`, `ps`, `whoami`, `uname`, `sudo`, `curl`… Unknown commands go to the AI shell. |
-| `ghostshell/fakefs.py` | The fake filesystem. Includes honeytoken files: `aws_credentials.txt`, `.ssh/id_rsa`, `database_backup.sql`. |
+| `ghostshell/honeypot.py` | Paramiko SSH server. Accepts any password — that is the trap. One thread per attacker. |
+| `ghostshell/shell.py` | Fake shell. `ls`, `cat`, `ps`, `whoami`, `uname`, `sudo`, `curl`. Unknown commands go to the AI shell. |
+| `ghostshell/fakefs.py` | The fake filesystem. Includes the honeytoken files. |
 | `ghostshell/llm.py` | Local Ollama AI shell. No external API, no data leaves your machine. Falls back to rules when Ollama is off. |
 | `ghostshell/services.py` | Fake admin panel + fake AWS metadata endpoint. Same fake AWS key as the SSH honeytoken. |
 | `ghostshell/db.py` | SQLite. Tables: `sessions`, `commands`, `honeytoken_hits`, `http_attempts`. |
-| `ghostshell/profiler.py` | Maps commands to MITRE ATT&CK tactics/techniques + skill score (bot / intermediate / skilled). |
+| `ghostshell/profiler.py` | Maps commands to MITRE ATT&CK tactics and techniques + skill score (bot / intermediate / skilled). |
 | `ghostshell/rules.py` | Generates Sigma + Suricata rules from a session's own commands. |
 | `ghostshell/dashboard.py` | Rich dark HTML dashboard: stats, session replay, MITRE profile, rules page, `/api/ioc`. |
 
----
-
-## Data flow - one attack, start to finish
+![Data flow](headings/data-flow.svg)
 
 ```
 1. Attacker SSHs in with admin / hunter123
-        → honeypot.py accepts, db.new_session()
+        -> honeypot accepts, new session in the database
 2. Attacker runs: ls, cat aws_credentials.txt, cat /etc/passwd
-        → shell.py answers from fakefs.py
-        → db.log_command() for every command
-        → cat on a honeytoken → db.log_honeytoken()
+        -> fake shell answers from the fake filesystem
+        -> every command is logged
+        -> cat on a honeytoken is logged as a honeytoken hit
 3. Attacker tries the stolen AWS key on the metadata endpoint
-        → services.py logs the attempt, returns the same fake key
-4. Dashboard reads SQLite
-        → profiler.py scores the session, maps MITRE tactics
-        → /session/<id> replays the terminal
-        → /rules/<id> generates Sigma + Suricata from the commands
-        → /api/ioc exposes attacker IPs + honeytoken hits as JSON
+        -> fake metadata service logs the attempt, returns the same fake key
+4. Dashboard reads the database
+        -> profiler scores the session, maps MITRE tactics
+        -> /session/<id> replays the terminal
+        -> /rules/<id> generates Sigma + Suricata from the commands
+        -> /api/ioc exposes attacker IPs + honeytoken hits as JSON
 ```
 
----
-
-## Honeytokens - the canary files
+![Honeytokens](headings/honeytokens.svg)
 
 | File | What it looks like | Signal |
 |---|---|---|
@@ -62,12 +48,9 @@ one fake world: same users, same files, same credentials, everywhere.
 | `/home/admin/.ssh/id_rsa` | Private SSH key | Attacker wants lateral movement |
 | `/home/admin/database_backup.sql` | Prod DB dump with password hashes | Attacker wants data / creds |
 
-Reading any of them is logged with timestamp, session and IP —
-in the dashboard under **Honeytoken hits** and in `/api/ioc`.
+Reading any of them is logged with timestamp, session and IP — in the dashboard under Honeytoken hits and in `/api/ioc`.
 
----
-
-## From attack to detection
+![From attack to detection](headings/attack-to-detection.svg)
 
 Every session can be turned into defence in one click:
 
@@ -75,5 +58,4 @@ Every session can be turned into defence in one click:
 - **Suricata rule** — paste into your IDS
 - **IOC feed** — `GET /api/ioc` — attacker IPs, ready to blocklist
 
-The rules are generated from the attacker's *actual* commands,
-not from a textbook list — so they match real behaviour.
+The rules are generated from the attacker's actual commands, not from a textbook list — so they match real behaviour.
