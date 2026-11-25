@@ -73,6 +73,10 @@ class FakeShell:
             out = f"[sudo] password for {self.username}: \nSorry, try again.\n"
         elif base in ("rm", "mkdir", "touch", "cp", "mv", "chmod"):
             out = ""
+        elif base in ("vim", "vi", "nano", "less", "more"):
+            out = f"Vim: {parts[1] if len(parts) > 1 else ''} — file opened (read-only in this session)\n"
+        elif base in ("top", "htop"):
+            out = "top - 10:02:11 up 1 day,  2 users,  load average: 0.12, 0.08, 0.05\n  PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND\n  884 root      20   0  72344  18200   9100 S   0.0   0.2   0:11.02 dockerd\n 1204 root      20   0  44210   9100   4200 S   0.0   0.1   0:03.11 server.py\n"
         elif base in ("ifconfig", "ip"):
             out = "eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500\n        inet 10.0.0.15  netmask 255.255.255.0  broadcast 10.0.0.255\n"
         elif base == "netstat":
