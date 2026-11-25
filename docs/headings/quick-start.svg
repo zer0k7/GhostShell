@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="171" height="44" viewBox="0 0 171 44">
+<rect width="171" height="44" rx="10" fill="#0b1220"/>
+<rect x="2" y="2" width="167" height="40" rx="9" fill="none" stroke="#f59e0b" stroke-width="2"/>
+<circle cx="24" cy="22" r="6" fill="#f59e0b"/>
+<text x="42" y="29" font-family="Segoe UI, system-ui, sans-serif" font-size="20" font-weight="700" fill="#f59e0b">Quick start</text>
+</svg>
