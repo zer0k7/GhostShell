@@ -1,12 +1,18 @@
-"""The fake filesystem the attacker sees.
+"""Stateful fake filesystem.
+
+Every attacker session gets its OWN copy of the filesystem, so
+`mkdir`, `touch`, `echo hello > file.txt`, `rm` actually change
+what that attacker sees — and nothing leaks between sessions.
+That is what makes the shell convincing: it behaves like a real
+machine instead of a static list of files.
 
 Honeytokens are real-looking secrets. Reading one is logged as a
-honeytoken hit — in Week 3 these also become canary alerts.
+honeytoken hit.
 """
+import copy
 import posixpath
 
-# path -> content (None = directory)
-FILES = {
+TEMPLATE = {
     "/": None,
     "/home": None,
     "/home/admin": None,
@@ -49,29 +55,86 @@ def normalise(cwd, path):
     return p if p.startswith("/") else "/" + p
 
 
+class FakeFS:
+    """One mutable filesystem per attacker session."""
+
+    def __init__(self):
+        self.files = copy.deepcopy(TEMPLATE)
+
+    def is_dir(self, path):
+        return path in self.files and self.files[path] is None
+
+    def exists(self, path):
+        return path in self.files
+
+    def list_dir(self, path):
+        if not self.is_dir(path):
+            return None
+        prefix = path if path == "/" else path + "/"
+        dirs, files = [], []
+        for p, content in self.files.items():
+            if p == path or not p.startswith(prefix):
+                continue
+            rest = p[len(prefix):]
+            if "/" in rest:
+                continue
+            (dirs if content is None else files).append(rest)
+        return sorted(dirs), sorted(files)
+
+    def read_file(self, path):
+        return self.files.get(path)
+
+    def write_file(self, path, content, append=False):
+        if self.is_dir(path):
+            return False
+        if append and path in self.files and self.files[path] is not None:
+            self.files[path] += content
+        else:
+            self.files[path] = content
+        return True
+
+    def mkdir(self, path):
+        if path in self.files:
+            return False
+        parent = posixpath.dirname(path)
+        if parent and not self.is_dir(parent):
+            return False
+        self.files[path] = None
+        return True
+
+    def touch(self, path):
+        if path not in self.files:
+            self.files[path] = ""
+        return True
+
+    def remove(self, path):
+        if path not in self.files or path == "/":
+            return False
+        if self.is_dir(path):
+            # only remove empty dirs, like rmdir
+            prefix = path + "/"
+            if any(p.startswith(prefix) for p in self.files):
+                return False
+        del self.files[path]
+        return True
+
+
+# Backwards-compatible module-level helpers (read-only template view).
+_FILES = TEMPLATE
+
+
 def is_dir(path):
-    return path in FILES and FILES[path] is None
+    return path in _FILES and _FILES[path] is None
 
 
 def exists(path):
-    return path in FILES
+    return path in _FILES
 
 
 def list_dir(path):
-    """Return (dirs, files) directly under path, or None if not a dir."""
-    if not is_dir(path):
-        return None
-    prefix = path if path == "/" else path + "/"
-    dirs, files = [], []
-    for p, content in FILES.items():
-        if p == path or not p.startswith(prefix):
-            continue
-        rest = p[len(prefix):]
-        if "/" in rest:
-            continue
-        (dirs if content is None else files).append(rest)
-    return sorted(dirs), sorted(files)
+    fs = FakeFS()
+    return fs.list_dir(path)
 
 
 def read_file(path):
-    return FILES.get(path)
+    return _FILES.get(path)

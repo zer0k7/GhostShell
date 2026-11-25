@@ -12,6 +12,8 @@ Normal honeypots are boring. They log a login, then break the moment an attacker
 
 I built GhostShell to be the whole fake company instead — SSH, a fake admin panel, fake AWS metadata — all sharing the same fake users, files and credentials. An attacker can poke around for hours and never realise nothing here is real. And while they do, GhostShell is profiling them and turning their own attack into detection rules.
 
+**v2 — more advanced, not just a simple honeypot:** the fake filesystem is now stateful — `mkdir`, `touch`, `echo hello > file.txt`, `rm` actually change the machine, and every attacker gets their own fresh copy. SSH clients are fingerprinted (client version, auth attempts), IPs are enriched with country + ASN, and the profiler now detects attack chains in order — recon to privesc to persistence — not just single keywords. Ships with Docker and tests.
+
 **Docs:** [Usage Guide](docs/USAGE.md) · [Architecture](docs/ARCHITECTURE.md)
 
 ---
@@ -65,6 +67,14 @@ uname -a
 Then open http://localhost:5000 — your session is there, replayable like a terminal recording.
 
 Optional: install [Ollama](https://ollama.com) and run `ollama pull llama3.2:1b` for the AI shell. If Ollama is not running, the rule-based fake shell takes over — nothing breaks.
+
+Or run it in Docker:
+
+```bash
+docker compose up --build
+```
+
+Tests: `python -m pytest tests/ -q`
 
 ---
 

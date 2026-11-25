@@ -13,6 +13,7 @@ import sqlite3
 from flask import Flask, jsonify, render_template_string
 
 from . import db
+from .enrichment import get_intel
 from .profiler import profile_commands
 from .rules import sigma_rule, suricata_rule
 
@@ -65,12 +66,12 @@ Click a session to replay it like a terminal recording.</p></div>
 </div>
 
 <div class="card"><h2>🎯 Sessions</h2>
-<table><tr><th>#</th><th>IP</th><th>Credentials tried</th><th>Started</th><th>Cmds</th><th>Profile</th><th></th></tr>
+<table><tr><th>#</th><th>IP / Country</th><th>Credentials tried</th><th>Client</th><th>Cmds</th><th>Profile</th><th>Chain</th><th></th></tr>
 {% for s in sessions %}
-<tr><td>{{ s.id }}</td><td>{{ s.src_ip }}</td>
-<td>{{ s.username }} / {{ s.password }}</td><td>{{ s.started_at[:19] }}</td>
-<td>{{ s.command_count }}</td>
+<tr><td>{{ s.id }}</td><td>{{ s.src_ip }}<br><span class="muted">{{ s.intel.country }} · {{ s.intel.asn }}</span></td>
+<td>{{ s.username }} / {{ s.password }}</td><td class="muted">{{ s.client_version or '-' }}</td><td>{{ s.command_count }}</td>
 <td><span class="badge {{ 'b-high' if s.profile.score>=60 else 'b-mid' if s.profile.score>=25 else 'b-bot' }}">{{ s.profile.level }}</span></td>
+<td>{% for c in s.profile.chains %}<span class="tag">{{ c }}</span>{% else %}<span class="muted">—</span>{% endfor %}</td>
 <td><a href="/session/{{ s.id }}">Replay →</a> · <a href="/rules/{{ s.id }}">Rules</a></td></tr>
 {% else %}<tr><td colspan="7" class="muted">No attackers yet. Try: ssh admin@localhost -p 2222</td></tr>
 {% endfor %}</table></div>
@@ -98,6 +99,8 @@ REPLAY = """
 <p class="sub">Score {{ profile.score }} · {{ src_ip }}</p>
 <p>MITRE tactics: {% for t in profile.tactics %}<span class="tag">{{ t }}</span>{% endfor %}</p>
 <p>Techniques: {% for t in profile.techniques %}<span class="tag">{{ t }}</span>{% endfor %}</p>
+<p>Attack chain: {% for c in profile.chains %}<span class="tag">{{ c }}</span>{% else %}<span class="muted">no chain detected</span>{% endfor %}</p>
+<p class="muted">Tactic order: {{ profile.tactic_order | join(' → ') or '—' }}</p>
 <p><a class="btn" href="/rules/{{ sid }}">Generate Sigma + Suricata rules</a></p>
 <div class="term">{% for c in commands %}<span class="cmd">$ {{ c.command }}</span>
 {{ c.response }}{% endfor %}</div>
@@ -151,6 +154,7 @@ def create_app(config, db_path):
         for s in sessions:
             cmds = db.get_commands(db_path, s["id"])
             s["profile"] = profile_commands([c["command"] for c in cmds])
+            s["intel"] = get_intel(db_path, s["src_ip"])
         return render_template_string(
             PAGE, css=CSS, sessions=sessions,
             hits=db.get_honeytoken_hits(db_path),

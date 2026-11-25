@@ -32,6 +32,12 @@ def init_db(db_path):
         );
         """
     )
+    # migrations for older DBs
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(sessions)").fetchall()]
+    if "client_version" not in cols:
+        conn.execute("ALTER TABLE sessions ADD COLUMN client_version TEXT DEFAULT ''")
+    if "auth_attempts" not in cols:
+        conn.execute("ALTER TABLE sessions ADD COLUMN auth_attempts INTEGER DEFAULT 1")
     conn.commit()
     conn.close()
 
@@ -40,11 +46,11 @@ def _now():
     return datetime.now(timezone.utc).isoformat()
 
 
-def new_session(db_path, src_ip, username, password):
+def new_session(db_path, src_ip, username, password, client_version="", auth_attempts=1):
     conn = _connect(db_path)
     cur = conn.execute(
-        "INSERT INTO sessions (src_ip, username, password, started_at) VALUES (?,?,?,?)",
-        (src_ip, username, password, _now()),
+        "INSERT INTO sessions (src_ip, username, password, started_at, client_version, auth_attempts) VALUES (?,?,?,?,?,?)",
+        (src_ip, username, password, _now(), client_version, auth_attempts),
     )
     conn.commit()
     sid = cur.lastrowid

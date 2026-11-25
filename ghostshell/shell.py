@@ -1,9 +1,12 @@
-"""Fake shell: answers common Linux commands plausibly.
+"""Fake shell — now STATEFUL.
 
-Unknown commands go to the local LLM (Ollama) if it is running,
-otherwise to a realistic 'command not found'.
+Each session gets its own FakeFS, so mkdir / touch / echo > file /
+rm actually change the machine the attacker sees. History and env
+vars persist for the session. Unknown commands go to the local LLM
+(Ollama) if it is running, otherwise to a realistic error.
 """
 from . import fakefs
+from .fakefs import FakeFS
 from .llm import ai_response
 
 FAKE_PS = """USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
@@ -26,6 +29,12 @@ class FakeShell:
         self.username = username
         self.cwd = "/home/admin"
         self.hostname = config.get("fake_hostname", "ubuntu-prod-01")
+        self.fs = FakeFS()
+        self.history = []
+        self.env = {
+            "USER": username, "HOME": f"/home/{username}", "SHELL": "/bin/bash",
+            "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        }
 
     def prompt(self):
         return f"{self.username}@{self.hostname}:{self.cwd}$ "
@@ -34,6 +43,10 @@ class FakeShell:
         cmd = raw.strip()
         if not cmd:
             return "", False
+        self.history.append(cmd)
+        # redirection: echo text > file  /  echo text >> file
+        if ">" in cmd and cmd.split()[0] == "echo":
+            return self._echo_redirect(cmd)
         parts = cmd.split()
         base = parts[0]
         out, should_exit = "", False
@@ -58,20 +71,33 @@ class FakeShell:
             out = self._cat(parts[1:])
         elif base == "echo":
             out = " ".join(parts[1:]) + "\n"
+        elif base == "export":
+            out = self._export(parts[1:])
         elif base == "ps":
             out = FAKE_PS
         elif base == "env":
-            out = f"USER={self.username}\nHOME=/home/{self.username}\nPWD={self.cwd}\nSHELL=/bin/bash\nPATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n"
+            out = "".join(f"{k}={v}\n" for k, v in self.env.items()) + f"PWD={self.cwd}\n"
         elif base == "history":
-            out = "    1  ls\n    2  cat notes.txt\n    3  ps aux\n"
-        elif base in ("clear",):
+            out = "".join(f"  {i+1:4d}  {h}\n" for i, h in enumerate(self.history))
+        elif base == "clear":
             out = "\x1b[2J\x1b[H"
+        elif base == "mkdir":
+            out = self._mkdir(parts[1:])
+        elif base == "touch":
+            out = self._touch(parts[1:])
+        elif base in ("rm", "rmdir"):
+            out = self._rm(parts[1:], base == "rmdir")
+        elif base == "cp":
+            out = self._cp(parts[1:])
+        elif base == "mv":
+            out = self._mv(parts[1:])
         elif base in ("curl", "wget"):
-            # Log it — attackers fetching a payload is high-value intel.
             out = "curl: (7) Failed to connect to host: Connection timed out\n"
         elif base == "sudo":
             out = f"[sudo] password for {self.username}: \nSorry, try again.\n"
-        elif base in ("rm", "mkdir", "touch", "cp", "mv", "chmod"):
+        elif base == "crontab":
+            out = "no crontab for admin\n" if "-l" in parts else ""
+        elif base in ("chmod",):
             out = ""
         elif base in ("vim", "vi", "nano", "less", "more"):
             out = f"Vim: {parts[1] if len(parts) > 1 else ''} — file opened (read-only in this session)\n"
@@ -90,7 +116,6 @@ class FakeShell:
             )
             out = (ai + "\n") if ai else f"bash: {base}: command not found\n"
 
-        # Honeytoken check: reading a canary file is the signal.
         if base == "cat":
             for arg in parts[1:]:
                 p = fakefs.normalise(self.cwd, arg)
@@ -99,6 +124,18 @@ class FakeShell:
 
                     log_honeytoken(self.db_path, self.session_id, p, self.src_ip)
         return out, should_exit
+
+    # -- filesystem commands (stateful) --
+    def _echo_redirect(self, cmd):
+        append = ">>" in cmd
+        sep = ">>" if append else ">"
+        text, target = cmd.split(sep, 1)
+        text = text[len("echo"):].strip().strip('"').strip("'")
+        path = fakefs.normalise(self.cwd, target.strip())
+        if self.fs.is_dir(path):
+            return f"bash: {target.strip()}: Is a directory\n", False
+        self.fs.write_file(path, text + "\n", append=append)
+        return "", False
 
     def _ls(self, args):
         target = self.cwd
@@ -110,7 +147,7 @@ class FakeShell:
             else:
                 target = a
         path = fakefs.normalise(self.cwd, target)
-        listing = fakefs.list_dir(path)
+        listing = self.fs.list_dir(path)
         if listing is None:
             return f"ls: cannot access '{target}': No such file or directory\n"
         dirs, files = listing
@@ -121,10 +158,10 @@ class FakeShell:
 
     def _cd(self, target):
         path = fakefs.normalise(self.cwd, target)
-        if fakefs.is_dir(path):
+        if self.fs.is_dir(path):
             self.cwd = path
             return ""
-        if fakefs.exists(path):
+        if self.fs.exists(path):
             return f"bash: cd: {target}: Not a directory\n"
         return f"bash: cd: {target}: No such file or directory\n"
 
@@ -134,10 +171,65 @@ class FakeShell:
         outs = []
         for arg in args:
             path = fakefs.normalise(self.cwd, arg)
-            if fakefs.is_dir(path):
+            if self.fs.is_dir(path):
                 outs.append(f"cat: {arg}: Is a directory\n")
-            elif fakefs.exists(path):
-                outs.append(fakefs.read_file(path))
+            elif self.fs.exists(path):
+                outs.append(self.fs.read_file(path))
             else:
                 outs.append(f"cat: {arg}: No such file or directory\n")
         return "".join(outs)
+
+    def _export(self, args):
+        for a in args:
+            if "=" in a:
+                k, v = a.split("=", 1)
+                self.env[k] = v
+        return ""
+
+    def _mkdir(self, args):
+        outs = []
+        for a in [x for x in args if not x.startswith("-")]:
+            p = fakefs.normalise(self.cwd, a)
+            if not self.fs.mkdir(p):
+                outs.append(f"mkdir: cannot create directory '{a}': File exists\n")
+        return "".join(outs)
+
+    def _touch(self, args):
+        for a in [x for x in args if not x.startswith("-")]:
+            self.fs.touch(fakefs.normalise(self.cwd, a))
+        return ""
+
+    def _rm(self, args, dir_only=False):
+        outs = []
+        for a in [x for x in args if not x.startswith("-")]:
+            p = fakefs.normalise(self.cwd, a)
+            if not self.fs.remove(p):
+                outs.append(f"rm: cannot remove '{a}': No such file or directory\n")
+        return "".join(outs)
+
+    def _cp(self, args):
+        args = [x for x in args if not x.startswith("-")]
+        if len(args) < 2:
+            return "cp: missing destination file operand\n"
+        src = fakefs.normalise(self.cwd, args[0])
+        dst = fakefs.normalise(self.cwd, args[1])
+        if not self.fs.exists(src) or self.fs.is_dir(src):
+            return f"cp: cannot stat '{args[0]}': No such file or directory\n"
+        self.fs.write_file(dst, self.fs.read_file(src))
+        return ""
+
+    def _mv(self, args):
+        args = [x for x in args if not x.startswith("-")]
+        if len(args) < 2:
+            return "mv: missing destination file operand\n"
+        src = fakefs.normalise(self.cwd, args[0])
+        dst = fakefs.normalise(self.cwd, args[1])
+        if not self.fs.exists(src):
+            return f"mv: cannot stat '{args[0]}': No such file or directory\n"
+        content = self.fs.read_file(src)
+        self.fs.remove(src)
+        if content is None:
+            self.fs.mkdir(dst)
+        else:
+            self.fs.write_file(dst, content)
+        return ""

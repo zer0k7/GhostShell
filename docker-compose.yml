@@ -1,0 +1,14 @@
+services:
+  ghostshell:
+    build: .
+    container_name: ghostshell
+    restart: unless-stopped
+    ports:
+      - "2222:2222"   # SSH honeypot
+      - "5000:5000"   # live dashboard
+      - "8081:8081"   # fake admin panel
+    volumes:
+      - ghostshell-data:/app/data
+
+volumes:
+  ghostshell-data:

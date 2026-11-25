@@ -18,12 +18,14 @@ class _Server(paramiko.ServerInterface):
         self.src_ip = src_ip
         self.username = None
         self.password = None
+        self.auth_attempts = 0
         self.event = threading.Event()
 
     def check_channel_request(self, kind, chanid):
         return paramiko.OPEN_SUCCEEDED if kind == "session" else paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
 
     def check_auth_password(self, username, password):
+        self.auth_attempts += 1
         self.username = username
         self.password = password
         return paramiko.AUTH_SUCCESSFUL
@@ -67,8 +69,16 @@ def _handle_client(client, config, db_path):
     if not server.event.wait(10):
         return
 
-    session_id = db.new_session(db_path, src_ip, server.username or "?", server.password or "?")
-    print(f"[+] login {src_ip} as {server.username} (session {session_id})", flush=True)
+    client_version = getattr(transport, "remote_version", "") or ""
+    session_id = db.new_session(
+        db_path, src_ip, server.username or "?", server.password or "?",
+        client_version=client_version, auth_attempts=max(server.auth_attempts, 1),
+    )
+    print(f"[+] login {src_ip} as {server.username} [{client_version}] (session {session_id})", flush=True)
+    # GeoIP/ASN enrichment in the background — never blocks the shell.
+    from .enrichment import enrich_ip
+
+    threading.Thread(target=enrich_ip, args=(db_path, src_ip), daemon=True).start()
 
     shell = FakeShell(config, db_path, session_id, src_ip, server.username or "admin")
     chan.send(f"Welcome to {config.get('banner', 'Ubuntu 22.04.4 LTS')}\r\n")

@@ -1,9 +1,10 @@
-"""Attacker profiling: MITRE ATT&CK mapping + skill scoring.
+"""Attacker profiling v2: MITRE mapping + skill scoring + attack chains.
 
-Week 3 expands this with LLM intent classification. Week 1 ships
-the deterministic rules so every captured command is already tagged.
+v1 only matched single keywords. v2 also looks at the ORDER of
+commands — a real attack is a chain, not a bag of words:
+  recon -> privilege escalation -> persistence -> exfiltration
+is a very different story from `ls` + `whoami` and then leaving.
 """
-# command keyword -> (MITRE tactic, technique)
 MITRE_MAP = {
     "nmap": ("Discovery", "T1046 Network Service Discovery"),
     "masscan": ("Discovery", "T1046 Network Service Discovery"),
@@ -28,9 +29,29 @@ MITRE_MAP = {
     "ssh": ("Lateral Movement", "T1021 Remote Services"),
 }
 
+# ordered tactic sequences that mean a real attack chain
+CHAINS = [
+    (["Discovery", "Privilege Escalation"], "Recon to privesc — attacker is escalating"),
+    (["Discovery", "Credential Access"], "Recon to credential theft"),
+    (["Credential Access", "Exfiltration"], "Credential theft to exfiltration"),
+    (["Discovery", "Command and Control"], "Recon to payload download"),
+    (["Privilege Escalation", "Persistence"], "Privesc to persistence — trying to stay in"),
+    (["Discovery", "Privilege Escalation", "Persistence"], "Full kill chain: recon, privesc, persistence"),
+    (["Discovery", "Privilege Escalation", "Exfiltration"], "Full kill chain: recon, privesc, exfiltration"),
+]
+
+
+def _tactics_in_order(commands):
+    seen = []
+    for cmd in commands:
+        low = cmd.lower()
+        for keyword, (tactic, _) in MITRE_MAP.items():
+            if keyword in low and tactic not in seen:
+                seen.append(tactic)
+    return seen
+
 
 def profile_commands(commands):
-    """commands: list of command strings. Returns tactics, techniques, score."""
     tactics, techniques = set(), set()
     score = 0
     for cmd in commands:
@@ -40,14 +61,26 @@ def profile_commands(commands):
                 tactics.add(tactic)
                 techniques.add(technique)
                 score += 10
-        # skill signals
         if any(k in low for k in ("sudo", "chmod +s", "/etc/shadow", "nmap -s")):
             score += 15
         if low.startswith(("ls", "pwd", "whoami")):
             score += 2
-    if score >= 60:
+
+    ordered = _tactics_in_order(commands)
+    chains = []
+    for seq, label in CHAINS:
+        # seq appears in order inside `ordered`
+        idx = 0
+        for t in ordered:
+            if idx < len(seq) and t == seq[idx]:
+                idx += 1
+        if idx == len(seq):
+            chains.append(label)
+            score += 20
+
+    if score >= 80:
         level = "skilled — likely human, targeted"
-    elif score >= 25:
+    elif score >= 40:
         level = "intermediate — probing with intent"
     else:
         level = "basic — likely automated bot / spray"
@@ -56,4 +89,6 @@ def profile_commands(commands):
         "techniques": sorted(techniques),
         "score": score,
         "level": level,
+        "chains": chains,
+        "tactic_order": ordered,
     }
