@@ -14,6 +14,8 @@
 *A normal honeypot logs logins and dies when an attacker types an unusual command.*
 *GhostShell is the whole fake company — and it fights back.*
 
+📚 **Docs:** [Usage Guide](docs/USAGE.md) · [Architecture](docs/ARCHITECTURE.md)
+
 </div>
 
 ---
