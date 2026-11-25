@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🏗 GhostShell — Architecture
+<h1><span style="color:#3b82f6">GhostShell - Architecture</span></h1>
 
 **How the trap works, end to end.**
 
@@ -8,29 +8,17 @@
 
 ---
 
-## 🗺 The fake company
+## The fake company
 
 GhostShell is not one honeypot — it is a whole fake company that shares
 one fake world: same users, same files, same credentials, everywhere.
 
-```mermaid
-flowchart LR
-    A[Attacker] -->|SSH, any password| B[SSH Honeypot :2222]
-    A -->|any login| C[Fake Admin Panel :8081]
-    A -->|stolen AWS key| D[Fake AWS Metadata]
-    B --> E[Fake Shell + Fake Filesystem]
-    C --> E
-    D --> E
-    E --> F[(SQLite — sessions, commands, honeytokens)]
-    F --> G[Profiler — MITRE ATT&CK + skill score]
-    F --> H[Live Dashboard :5000]
-    G --> I[Sigma / Suricata rules + IOC feed]
-    H --> I
-```
+![GhostShell Architecture](architecture.svg)
+
 
 ---
 
-## 🧩 Components
+## Components
 
 | File | Job |
 |---|---|
@@ -46,7 +34,7 @@ flowchart LR
 
 ---
 
-## 🔄 Data flow — one attack, start to finish
+## Data flow - one attack, start to finish
 
 ```
 1. Attacker SSHs in with admin / hunter123
@@ -66,7 +54,7 @@ flowchart LR
 
 ---
 
-## 🪤 Honeytokens — the canary files
+## Honeytokens - the canary files
 
 | File | What it looks like | Signal |
 |---|---|---|
@@ -79,7 +67,7 @@ in the dashboard under **Honeytoken hits** and in `/api/ioc`.
 
 ---
 
-## 🛡 From attack to detection
+## From attack to detection
 
 Every session can be turned into defence in one click:
 

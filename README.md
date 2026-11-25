@@ -1,58 +1,60 @@
 <div align="center">
 
-# 👻 GhostShell
+<h1><span style="color:#22c55e">GhostShell</span></h1>
 
-### AI-Driven Deception Platform
+<h3><span style="color:#94a3b8">AI-Driven Deception Platform</span></h3>
 
-**Trick attackers. Profile them. Turn their attacks into defence.**
+<p><b>Trick attackers. Profile them. Turn their attacks into defence.</b></p>
 
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue?style=flat-square&logo=python)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Working%20v1.0-brightgreen?style=flat-square)]()
-[![Made by](https://img.shields.io/badge/Made%20by-zer0k7-black?style=flat-square)](https://github.com/zer0k7)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![License](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge)](LICENSE)
+[![Status](https://img.shields.io/badge/Status-Working_v1.0-22c55e?style=for-the-badge)]()
+[![Made by](https://img.shields.io/badge/Made_by-zer0k7-111827?style=for-the-badge)](https://github.com/zer0k7)
 
-*A normal honeypot logs logins and dies when an attacker types an unusual command.*
-*GhostShell is the whole fake company — and it fights back.*
+<p><i>A normal honeypot logs logins and dies when an attacker types an unusual command.</i></p>
+<p><i>GhostShell is the whole fake company — and it fights back.</i></p>
 
-📚 **Docs:** [Usage Guide](docs/USAGE.md) · [Architecture](docs/ARCHITECTURE.md)
+<p><b>Docs:</b> <a href="docs/USAGE.md">Usage Guide</a> &nbsp;·&nbsp; <a href="docs/ARCHITECTURE.md">Architecture</a></p>
 
 </div>
 
 ---
 
-## ✨ What makes it different
+<h2><span style="color:#22c55e">What makes it different</span></h2>
 
-| Normal honeypot | **GhostShell** |
+| Normal honeypot | <span style="color:#22c55e"><b>GhostShell</b></span> |
 |---|---|
 | Logs SSH logins | Logs SSH **+ fake admin panel + fake AWS metadata** — one fake company |
 | Scripted shell, breaks on weird commands | **AI fake shell** (local Ollama) answers *any* command like real Linux |
 | Just an IP in a log | **Attacker profile**: bot vs human, skill level, intent |
-| No context | Auto-mapped to **MITRE ATT&CK** tactics & techniques |
+| No context | Auto-mapped to **MITRE ATT&CK** tactics and techniques |
 | Watching only | **Honeytokens** — fake AWS keys, `id_rsa`, DB backups that phone home |
 | Data dies in a log file | Auto-generates **Sigma + Suricata rules + IOC feed** from real attacks |
 
 ---
 
-## 🏗 Architecture
+<h2><span style="color:#3b82f6">Architecture</span></h2>
 
-```mermaid
-flowchart LR
-    A[Attacker] -->|SSH any password| B[SSH Honeypot :2222]
-    A -->|fake login| C[Fake Admin Panel :8081]
-    A -->|stolen AWS key| D[Fake AWS Metadata]
-    B --> E[Fake Shell + Fake Filesystem]
-    C --> E
-    D --> E
-    E --> F[(SQLite — sessions, commands, honeytokens)]
-    F --> G[Profiler — MITRE ATT&CK + skill score]
-    F --> H[Live Dashboard :5000]
-    G --> I[Sigma / Suricata rules + IOC feed]
-    H --> I
-```
+![GhostShell Architecture](docs/architecture.svg)
+
+<table>
+<tr>
+<td><b><span style="color:#ef4444">Attacker</span></b><br/>any password works</td>
+<td><b><span style="color:#3b82f6">SSH Honeypot :2222</span></b><br/>Paramiko server</td>
+<td><b><span style="color:#a855f7">Fake Admin Panel :8081</span></b><br/>Acme Corp portal</td>
+<td><b><span style="color:#f59e0b">Fake AWS Metadata</span></b><br/>same fake AWS key</td>
+</tr>
+<tr>
+<td><b><span style="color:#22c55e">Fake Shell + Filesystem</span></b><br/>AI shell + honeytokens</td>
+<td><b><span style="color:#94a3b8">SQLite Database</span></b><br/>sessions, commands, hits</td>
+<td><b><span style="color:#14b8a6">Profiler + Rules</span></b><br/>MITRE, Sigma, Suricata</td>
+<td><b><span style="color:#3b82f6">Live Dashboard :5000</span></b><br/>stats, replay, IOC feed</td>
+</tr>
+</table>
 
 ---
 
-## 🚀 Quick start
+<h2><span style="color:#f59e0b">Quick start</span></h2>
 
 ```bash
 git clone https://github.com/zer0k7/GhostShell.git
@@ -65,16 +67,16 @@ python3 -m venv .venv
 
 | Service | URL | What it is |
 |---|---|---|
-| 🎯 SSH honeypot | `ssh admin@localhost -p 2222` | Any password works — it is a trap |
-| 🌐 Fake admin panel | http://localhost:8081 | Fake Acme Corp portal, any login works |
-| 📊 Live dashboard | http://localhost:5000 | Stats, session replay, MITRE, rules, IOC feed |
+| SSH honeypot | `ssh admin@localhost -p 2222` | Any password works — it is a trap |
+| Fake admin panel | http://localhost:8081 | Fake Acme Corp portal, any login works |
+| Live dashboard | http://localhost:5000 | Stats, session replay, MITRE, rules, IOC feed |
 
 Try it like an attacker:
 
 ```bash
 ssh admin@localhost -p 2222   # password: anything, e.g. hunter123
 ls
-cat aws_credentials.txt       # 🪤 honeytoken — this hit is logged
+cat aws_credentials.txt       # honeytoken — this hit is logged
 ps aux
 uname -a
 ```
@@ -87,12 +89,12 @@ Then open http://localhost:5000 — your session is there, replayable like a ter
 
 ---
 
-## 📊 Dashboard — what you see
+<h2><span style="color:#a855f7">Dashboard — what you see</span></h2>
 
 - **Stats cards** — attacker sessions, commands captured, honeytoken hits, unique IPs
 - **Sessions table** — IP, credentials tried, profile badge (bot / intermediate / skilled)
 - **Terminal replay** — every command + response, exactly as the attacker saw it
-- **MITRE profile** — tactics & techniques per session, with a skill score
+- **MITRE profile** — tactics and techniques per session, with a skill score
 - **Detection rules** — one click generates a Sigma rule + Suricata rule from that session
 - **IOC feed** — `GET /api/ioc` returns attacker IPs + honeytoken hits as JSON
 
@@ -116,13 +118,18 @@ level: high
 
 ---
 
-## 🗂 Project layout
+<h2><span style="color:#14b8a6">Project layout</span></h2>
 
 ```
 GhostShell/
 ├── run.py                    # starts everything: SSH + fake panel + dashboard
 ├── config.yaml               # ports, fake hostname, Ollama settings
 ├── requirements.txt
+├── LICENSE
+├── docs/
+│   ├── USAGE.md              # 5-minute usage guide
+│   ├── ARCHITECTURE.md       # architecture, data flow, honeytokens
+│   └── architecture.svg      # coloured architecture diagram
 ├── ghostshell/
 │   ├── honeypot.py           # Paramiko SSH server — accepts ANY password
 │   ├── shell.py              # fake shell: ls / cat / ps / whoami / ... + AI fallback
@@ -139,7 +146,7 @@ GhostShell/
 
 ---
 
-## 🎯 Why this matters for jobs
+<h2><span style="color:#ef4444">Why this matters for jobs</span></h2>
 
 | Role | What GhostShell proves |
 |---|---|
@@ -155,7 +162,7 @@ GhostShell/
 
 ---
 
-## ⚠️ Safety — read this
+<h2><span style="color:#f59e0b">Safety — read this</span></h2>
 
 GhostShell is a **defensive research tool** for your own lab only.
 
@@ -166,7 +173,7 @@ GhostShell is a **defensive research tool** for your own lab only.
 
 ---
 
-## 🛣 Roadmap — all built today
+<h2><span style="color:#22c55e">Roadmap — all built today</span></h2>
 
 - [x] Core SSH honeypot + fake shell + fake filesystem
 - [x] Session + command logging (SQLite)
@@ -184,9 +191,7 @@ GhostShell is a **defensive research tool** for your own lab only.
 
 <div align="center">
 
-**Built by [Salik Seraj Naik](https://github.com/zer0k7) — zer0k7**
-*BTech CSE · Red Team / Offensive Security · TryHackMe Top 1%*
-
-⭐ If you like it, star it. If an attacker likes it, they'll never know it was fake.
+<p><b>Built by <a href="https://github.com/zer0k7">Salik Seraj Naik</a> — zer0k7</b></p>
+<p><i>BTech CSE · Red Team / Offensive Security · TryHackMe Top 1%</i></p>
 
 </div>
